@@ -26,9 +26,10 @@
       ".static-tech-track{display:flex!important;flex-direction:row!important;align-items:stretch!important;gap:0!important;height:100%!important;margin:0!important;padding:0!important;list-style:none!important;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)!important}",
       ".static-tech-track.is-dragging{transition:none!important}",
       ".static-tech-slide-item{display:block!important;flex:0 0 auto!important;height:100%!important;list-style:none!important}",
-      ".static-tech-slide{position:relative!important;display:block!important;width:100%!important;height:100%!important;opacity:1!important;visibility:visible!important;transform:none!important;overflow:hidden}",
+      ".static-tech-slide{position:relative!important;width:100%!important;height:100%!important;opacity:1!important;visibility:visible!important;transform:none!important;overflow:hidden}",
       ".static-tech-slide .static-slide-fallback,.static-tech-slide .static-slide-caption{display:none!important}",
       ".static-tech-slide [data-uzhnaq-background-image-wrapper=\"true\"]{position:absolute!important;inset:0!important}",
+      ".static-tech-slide [data-uzhnaq-background-image-wrapper=\"true\"] img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center center!important}",
       ".static-tech-controls{position:absolute;right:18px;bottom:18px;display:flex;align-items:center;gap:10px;z-index:8}",
       ".static-tech-button{appearance:none;border:1px solid rgba(255,255,255,.18);background:rgba(8,8,10,.72);color:#fff;width:46px;height:46px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font:600 18px/1 Manrope,Arial,sans-serif;cursor:pointer;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:background .25s ease,border-color .25s ease,transform .25s ease}",
       ".static-tech-button:hover{background:rgba(18,18,22,.9);border-color:rgba(220,246,54,.6);transform:translateY(-1px)}",
@@ -348,8 +349,27 @@
 
       var viewport = section.firstElementChild;
       var track = section.querySelector("ul");
+      var controls = section.querySelector(".uzhnaq--slideshow-controls");
+
+      Array.from(track ? track.children : []).forEach(function (item) {
+        if (!(item instanceof HTMLElement)) {
+          return;
+        }
+
+        if (item.getAttribute("aria-hidden") === "true") {
+          item.remove();
+        }
+      });
+
       var items = Array.from(track ? track.children : []).filter(function (item) {
         return item instanceof HTMLElement;
+      });
+      var prevButton = controls && controls.querySelector('button[aria-label="Previous"]');
+      var nextButton = controls && controls.querySelector('button[aria-label="Next"]');
+      var pagerButtons = Array.from(
+        controls ? controls.querySelectorAll('button[aria-label^="Scroll to page "]') : [],
+      ).filter(function (button) {
+        return button instanceof HTMLButtonElement;
       });
 
       if (!(viewport instanceof HTMLElement) || !(track instanceof HTMLElement) || items.length < 2) {
@@ -388,19 +408,6 @@
         });
       });
 
-      var controls = document.createElement("div");
-      controls.className = "static-tech-controls";
-
-      var previousButton = createControlButton("←", "Previous slide");
-      var nextButton = createControlButton("→", "Next slide");
-      var status = document.createElement("div");
-      status.className = "static-tech-status";
-
-      controls.appendChild(previousButton);
-      controls.appendChild(status);
-      controls.appendChild(nextButton);
-      section.appendChild(controls);
-
       var state = {
         index: 0,
         slideWidth: 0,
@@ -412,7 +419,31 @@
       };
 
       function updateStatus() {
-        status.textContent = padNumber(state.index + 1) + " / " + padNumber(items.length);
+        var activeIndex = state.index % items.length;
+
+        pagerButtons.forEach(function (button, index) {
+          var active = index === activeIndex;
+          button.hidden = index >= items.length;
+          button.setAttribute("aria-current", active ? "true" : "false");
+          button.style.pointerEvents = index < items.length ? "auto" : "none";
+
+          var dot = button.firstElementChild;
+          if (dot instanceof HTMLElement) {
+            dot.style.opacity = active ? "1" : "0.45";
+            dot.style.transform = active ? "scale(1)" : "scale(0.88)";
+            dot.style.transition = "opacity .2s ease, transform .2s ease";
+          }
+        });
+
+        [prevButton, nextButton].forEach(function (button) {
+          if (!(button instanceof HTMLButtonElement)) {
+            return;
+          }
+
+          button.disabled = items.length < 2;
+          button.style.opacity = items.length < 2 ? "0.45" : "1";
+          button.style.cursor = items.length < 2 ? "default" : "pointer";
+        });
       }
 
       function applyTransform(animate, deltaX) {
@@ -512,14 +543,27 @@
         }
       }
 
-      previousButton.addEventListener("click", function () {
-        goTo(state.index - 1, true);
-        scheduleAuto(TECH_INTERACTION_PAUSE);
-      });
+      if (prevButton instanceof HTMLButtonElement) {
+        prevButton.addEventListener("click", function () {
+          goTo(state.index - 1, true);
+        });
+      }
 
-      nextButton.addEventListener("click", function () {
-        goTo(state.index + 1, true);
-        scheduleAuto(TECH_INTERACTION_PAUSE);
+      if (nextButton instanceof HTMLButtonElement) {
+        nextButton.addEventListener("click", function () {
+          goTo(state.index + 1, true);
+        });
+      }
+
+      pagerButtons.forEach(function (button, index) {
+        if (index >= items.length) {
+          button.hidden = true;
+          return;
+        }
+
+        button.addEventListener("click", function () {
+          goTo(index, true);
+        });
       });
 
       section.addEventListener("pointerdown", handlePointerDown);

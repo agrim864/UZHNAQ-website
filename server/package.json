@@ -1,0 +1,21 @@
+{
+  "name": "uzhnaq-enquiry-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lightweight enquiry form backend for the UZHNAQ static site.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "check": "node --check index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "nodemailer": "^8.0.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
